@@ -15,7 +15,7 @@ export async function PATCH(
   try {
     const token = await getToken({ req: request });
 
-    if (!token || token.role !== "admin" || "manager") {
+    if (!token || (token.role !== 'admin' && token.role !== 'manager')) {
       return NextResponse.json(
         {
           success: false,
@@ -40,10 +40,10 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const allowedFeilds = ["name", "avatarUrl", "meta"];
+    const allowedFields = ["name", "avatarUrl", "meta"];
     const updates: any = {};
 
-    for (const field in allowedFeilds) {
+    for (const field of allowedFeilds) {
       if (body[field] && body[field] !== undefined) {
         updates[field] = body[field];
       }

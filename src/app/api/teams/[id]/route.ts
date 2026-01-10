@@ -13,7 +13,7 @@ export async function GET(
   await dbConnect();
 
   try {
-    if (mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
       return NextResponse.json(
         {
           success: false,
@@ -98,7 +98,7 @@ export async function PUT(
   try {
     const token = await getToken({ req: request });
 
-    if (!token || token.role !== "admin" || "manager") {
+    if (!token || (token.role !== 'admin' && token.role !== 'manager')) {
       return NextResponse.json(
         {
           success: false,
@@ -141,10 +141,10 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const allowedFeilds = ["name", "description", "memberIds"];
-    const updates: any = [];
+    const allowedFields = ["name", "description", "memberIds"];
+    const updates: any = {};
 
-    for (const fields in allowedFeilds) {
+    for (const fields of allowedFeilds) {
       if (
         body[fields] &&
         body[fields] !== undefined &&
@@ -227,7 +227,7 @@ export async function PUT(
 
     await AuditLogModel.create({
       action: "TEAM_UPDATED",
-      actorId: token.sub,
+      actorId: token._id,
       targetType: "team",
       targetId: params.id,
       meta: {
@@ -318,7 +318,7 @@ export async function DELETE(request: NextRequest, {params}: {params: {id: strin
       }
     )
 
-    if(!manager) {
+    if(manager.matchedCount === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -353,7 +353,7 @@ export async function DELETE(request: NextRequest, {params}: {params: {id: strin
       targetType: 'team',
       targetId: params.id,
       meta: {
-        note: `${token.name} with id: ${token.id} deleted team ${teamPrev.name} ${params.id}`
+        note: `${token.name} with id: ${token._id} deleted team ${teamPrev.name} ${params.id}`
       }
     })
 

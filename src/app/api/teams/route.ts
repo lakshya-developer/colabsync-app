@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          messsage: 'Field parsing error.',
+          message: 'Field parsing error.',
           error: parsed.error.flatten()
         },
         { status: 400 }
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     const token = await getToken({req: request})
 
-    if(!token || token.role !== 'admin' || 'manager') {
+    if(!token || (token.role !== 'admin' && token.role !== 'manager')) {
       return NextResponse.json(
         {
           success: false,

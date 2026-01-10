@@ -15,7 +15,7 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
 
     const token = await getToken({req: request});
 
-    if(!token || token.role !== 'admin' || 'manager') {
+    if(!token || (token.role !== 'admin' && token.role !== 'manager')) {
       return NextResponse.json(
         {
           success: false,
@@ -37,10 +37,10 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
     }
 
     const body = await request.json()
-    const allowedFeilds = ["name", "avatarUrl", "meta"];
+    const allowedFields = ["name", "avatarUrl", "meta"];
     const updates: any = {};
 
-    for(const field in allowedFeilds){
+    for(const field of allowedFeilds){
       if(body[field] && body[field] !== undefined) {
         updates[field] = body[field];
       }
@@ -79,7 +79,7 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
 
     await AuditLogModel.create({
       action: "USER_UPDATED",
-      actorId: new mongoose.Types.ObjectId(token.id as string),
+      actorId: new mongoose.Types.ObjectId(token._id as string),
       targetType: "user",
       targetId: new mongoose.Types.ObjectId(params.id),
       meta: {
@@ -91,7 +91,7 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
           field,
           value: (user as any)[field]
         })),
-        note: `User ${token.id} updated user ${params.id}`
+        note: `User ${token._id} updated user ${params.id}`
       }
     })
 
@@ -162,11 +162,11 @@ export async function DELETE(request: NextRequest, {params}: {params: {id: strin
 
     await AuditLogModel.create({
       action: "USER_DELETED",
-      actorId: new mongoose.Types.ObjectId(token.id as string),
+      actorId: new mongoose.Types.ObjectId(token._id as string),
       targetType: "user",
       targetId: new mongoose.Types.ObjectId(params.id),
       meta: {
-        note: `User ${token.id} deleted user ${params.id}`
+        note: `User ${token._id} deleted user ${params.id}`
       }
     })
 
