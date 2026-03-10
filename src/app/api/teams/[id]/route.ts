@@ -1,3 +1,4 @@
+import { Transaction } from "@/helper/transaction";
 import dbConnect from "@/lib/dbConnect";
 import { AuditLogModel } from "@/models/AuditLog";
 import TeamModel from "@/models/Team";
@@ -8,12 +9,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
 
   try {
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    const paramsInfo = await params;
+    if (!mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
       return NextResponse.json(
         {
           success: false,
@@ -22,7 +24,6 @@ export async function GET(
         { status: 400 }
       );
     }
-
 
     const token = await getToken({ req: request });
 
@@ -46,7 +47,10 @@ export async function GET(
       );
     }
 
-    const team = await TeamModel.findOne({ _id: params.id, companyId: token.companyId });
+    const team = await TeamModel.findOne({
+      _id: paramsInfo.id,
+      companyId: token.companyId,
+    });
 
     if (!team) {
       return NextResponse.json(
@@ -91,14 +95,15 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await dbConnect();
 
   try {
     const token = await getToken({ req: request });
+    const paramsInfo = await params;
 
-    if (!token || (token.role !== 'admin' && token.role !== 'manager')) {
+    if (!token || (token.role !== "admin" && token.role !== "manager")) {
       return NextResponse.json(
         {
           success: false,
@@ -108,7 +113,7 @@ export async function PUT(
       );
     }
 
-    if (mongoose.Types.ObjectId.isValid(params.id)) {
+    if (mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
       return NextResponse.json(
         {
           success: false,
@@ -118,7 +123,10 @@ export async function PUT(
       );
     }
 
-    const team = await TeamModel.findOne({ _id: params.id, companyId: token.companyId });
+    const team = await TeamModel.findOne({
+      _id: paramsInfo.id,
+      companyId: token.companyId,
+    });
 
     if (!team) {
       return NextResponse.json(
@@ -144,7 +152,7 @@ export async function PUT(
     const allowedFields = ["name", "description", "memberIds"];
     const updates: any = {};
 
-    for (const fields of allowedFeilds) {
+    for (const fields of allowedFields) {
       if (
         body[fields] &&
         body[fields] !== undefined &&
@@ -164,83 +172,89 @@ export async function PUT(
       );
     }
 
-    if (body.memberIds) {
-      const users = await UserModel.find({
-        _id: { $in: body.memberIds },
-        companyId: token.companyId,
-        role: "employee",
-      });
-
-      if (users.length === 0) {
+    const teamUpdate = await Transaction(async (session) => {
+      if (body.memberIds) {
+        const users = await UserModel.find({
+          _id: { $in: body.memberIds },
+          companyId: token.companyId,
+          role: "employee",
+        });
+  
+        if (users.length === 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: "No new users provided",
+            },
+            { status: 400 }
+          );
+        }
+  
+        const newMembers = users.filter(
+          (u) => !team.memberId.some((id) => id.equals(u._id))
+        );
+  
+        if (newMembers.length === 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: "No users provided",
+            },
+            { status: 400 }
+          );
+        }
+  
+        await TeamModel.updateOne(
+          { _id: paramsInfo.id, companyId: token.companyId },
+          { $addToSet: { memberIds: { $each: newMembers.map((u) => u._id) } } }
+        ).session(session);
+  
+        await UserModel.updateMany(
+          {
+            _id: { $in: newMembers.map((u) => u._id) },
+            companyId: token.companyId,
+          },
+          { $set: { "meta.assignedTeamId": paramsInfo.id } }
+        ).session(session);
+      }
+  
+      const updatedTeam = await TeamModel.findOneAndUpdate(
+        { _id: paramsInfo.id, companyId: token.companyId },
+        { $set: updates },
+        { new: true }
+      ).session(session);
+  
+      if (!updatedTeam) {
         return NextResponse.json(
           {
             success: false,
-            message: "No new users provided",
+            message: "There was a problem while updating.",
           },
           { status: 400 }
         );
       }
-
-      const newMembers = users.filter((u) => !team.memberId.some(id => id.equals(u._id)));
-
-      if(newMembers.length === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "No users provided",
-          },
-          { status: 400 }
-        );
+  
+      if (body.memberIds) {
+        updates["memberIds"] = body["memberIds"];
       }
-
-      await TeamModel.updateOne(
-        { _id: params.id, companyId: token.companyId },
-        { $addToSet: { memberIds: { $each: newMembers.map(u => u._id) } } }
-      );
-      
-
-      await UserModel.updateMany(
-        {_id: {$in: newMembers.map((u) => u._id)}, companyId: token.companyId},
-        {$set: {'meta.assignedTeamId': params.id }}
-      )
-    }
-
-    const updatedTeam = await TeamModel.findOneAndUpdate(
-      { _id: params.id, companyId: token.companyId }, 
-      { $set: updates },
-      { new: true }
-    );
-
-    if(!updatedTeam) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "There was a problem while updating."
+  
+      await AuditLogModel.create([{
+        action: "TEAM_UPDATED",
+        actorId: token._id,
+        targetType: "team",
+        targetId: paramsInfo.id,
+        meta: {
+          previous: Object.keys(updates).map((field) => ({
+            field,
+            value: (team as any)[field],
+          })),
+          current: Object.keys(updates).map((field) => ({
+            field,
+            value: (updatedTeam as any)[field],
+          })),
         },
-        { status: 400 }
-      );
-    }
-
-    if(body.memberIds) {
-      updates['memberIds'] = body["memberIds"]
-    }
-
-    await AuditLogModel.create({
-      action: "TEAM_UPDATED",
-      actorId: token._id,
-      targetType: "team",
-      targetId: params.id,
-      meta: {
-        previous: Object.keys(updates).map(field => ({
-          field,
-          value: (team as any)[field]
-        })),
-        current: Object.keys(updates).map(field => ({
-          field,
-          value: (updatedTeam as any)[field]
-        })),
-      }
-    });
+      }], { session });
+    })
 
     return NextResponse.json(
       {
@@ -249,7 +263,6 @@ export async function PUT(
       },
       { status: 200 }
     );
-
   } catch (error) {
     console.log("Error occured while updating teams info.");
     return NextResponse.json(
@@ -263,117 +276,126 @@ export async function PUT(
   }
 }
 
-
-export async function DELETE(request: NextRequest, {params}: {params: {id: string}}) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   await dbConnect();
 
   try {
-    if(!mongoose.Types.ObjectId.isValid(params.id)) {
+    const paramsInfo = await params;
+    if (!mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Team id is not a valid objeted Id.'
+          message: "Team id is not a valid objeted Id.",
         },
         { status: 400 }
-      )
+      );
     }
 
-    const token = await getToken({req: request});
+    const token = await getToken({ req: request });
 
-    if(!token || token.role !== 'admin') {
+    if (!token || token.role !== "admin") {
       return NextResponse.json(
         {
           success: false,
-          message: 'Not authorized or authenticated to delete team.'
+          message: "Not authorized or authenticated to delete team.",
         },
         { status: 400 }
-      )
+      );
     }
 
     const teamPrev = await TeamModel.findOne({
-      _id: params.id,
-      companyId: token.companyId
-    })
+      _id: paramsInfo.id,
+      companyId: token.companyId,
+    });
 
-    if(!teamPrev) {
+    if (!teamPrev) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Team with this id does not exist.'
+          message: "Team with this id does not exist.",
         },
         { status: 400 }
-      )
+      );
     }
 
-    const team = await TeamModel.deleteOne({_id: params.id, companyId: token.companyId});
+    const deleteTeam = await Transaction(async (session) => {
+      const team = await TeamModel.deleteOne({
+        _id: paramsInfo.id,
+        companyId: token.companyId,
+      }).session(session);
 
-    const manager = await UserModel.updateOne(
-      {
-        role: 'manager',
-        'meta.assignedTeamId': params.id,
-        companyId: token.companyId
-      },
-      {
-        $set: {'meta.assignedTeamId': null}
-      }
-    )
-
-    if(manager.matchedCount === 0) {
-      return NextResponse.json(
+      const manager = await UserModel.updateOne(
         {
-          success: false,
-          message: 'No manager found or assigned to team.'
+          role: "manager",
+          "meta.assignedTeamId": paramsInfo.id,
+          companyId: token.companyId,
         },
-        { status: 404}
-      )
-    }
-
-    const users = await UserModel.updateMany(
-      {
-        'meta.assignedTeamId': params.id,
-        companyId: token.companyId
-      },
-      { $set: {'meta.assignedTeamId': null} }
-    )
-
-    if(users.matchedCount === 0) {
-      return NextResponse.json(
         {
-          success: false,
-          message: 'No user found assigned to this team.'
-        },
-        { status: 500 }
-      )
-    }
-    
+          $set: { "meta.assignedTeamId": null },
+        }
+      ).session(session);
 
-    await AuditLogModel.create({
-      action: "TEAM_DELETED",
-      actorId: token._id,
-      targetType: 'team',
-      targetId: params.id,
-      meta: {
-        note: `${token.name} with id: ${token._id} deleted team ${teamPrev.name} ${params.id}`
+      if (manager.matchedCount === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "No manager found or assigned to team.",
+          },
+          { status: 404 }
+        );
       }
-    })
+
+      const users = await UserModel.updateMany(
+        {
+          "meta.assignedTeamId": paramsInfo.id,
+          companyId: token.companyId,
+        },
+        { $set: { "meta.assignedTeamId": null } }
+      ).session(session);
+
+      if (users.matchedCount === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "No user found assigned to this team.",
+          },
+          { status: 500 }
+        );
+      }
+
+      await AuditLogModel.create([{
+        action: "TEAM_DELETED",
+        actorId: token._id,
+        targetType: "team",
+        targetId: paramsInfo.id,
+        meta: {
+          note: `${token.name} with id: ${token._id} deleted team ${teamPrev.name} ${paramsInfo.id}`,
+        },
+      }], { session });
+
+      return teamPrev;
+    });
 
     return NextResponse.json(
       {
         success: true,
-        message: 'Team deleted successfully.'
+        message: "Team deleted successfully.",
+        data: deleteTeam
       },
       { status: 200 }
-    )
-
+    );
   } catch (error) {
-    console.log("Error occured while deleting team.", error)
+    console.log("Error occured while deleting team.", error);
     return NextResponse.json(
       {
         success: false,
-        message: 'There was an error while deleting the team,',
+        message: "There was an error while deleting the team,",
         error,
       },
       { status: 500 }
-    )
+    );
   }
 }

@@ -15,14 +15,6 @@ export interface Comment {
   commentedAt: Date;
 }
 
-export interface ActivityLogs {
-  _id: mongoose.Types.ObjectId;
-  action: string;
-  changedFrom?: string;
-  changedTo: string;
-  performedBy: mongoose.Types.ObjectId;
-  performedAt: Date;
-}
 
 export interface Task extends Document {
   _id: mongoose.Types.ObjectId;
@@ -33,10 +25,10 @@ export interface Task extends Document {
   assignedId: mongoose.Types.ObjectId;
   creatorId: mongoose.Types.ObjectId;
   teamId?: mongoose.Types.ObjectId;
+  companyId: mongoose.Types.ObjectId;
   dueDate: Date;
   attachments: Attachment[];
   comments?: Comment[];
-  activityLog: ActivityLogs[];
   startDate?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -49,6 +41,7 @@ const TaskSchema: Schema<Task> = new mongoose.Schema({
   priority: { type: String, required: true },
   assignedId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   creatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  companyId: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true},
   dueDate: { type: Date, required: true },
   attachments: [
     {

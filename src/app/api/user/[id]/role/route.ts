@@ -8,97 +8,81 @@ import { AuditLogModel } from "@/models/AuditLog";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   await dbConnect();
 
   try {
     const token = await getToken({ req: request });
+    const paramsInfo = await params;
 
-    if (!token || (token.role !== 'admin' && token.role !== 'manager')) {
+    if (!token || token.role !== "admin") {
       return NextResponse.json(
         {
           success: false,
           message: "Invalid role",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Valid Objected Id
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
       return NextResponse.json(
         {
           success: false,
           message: "Id not valid",
         },
-        { status: 400 }
+        { status: 400 },
       );
-    }
-
-    if (token.role) {
     }
 
     const body = await request.json();
-    const allowedFields = ["name", "avatarUrl", "meta"];
-    const updates: any = {};
+    const allowedFields = ["employee", "manager", "admin"];
 
-    for (const field of allowedFeilds) {
-      if (body[field] && body[field] !== undefined) {
-        updates[field] = body[field];
-      }
-    }
-
-    // If empty updates
-    if (Object.keys(updates).length === 0) {
+    if (!body["role"] || !allowedFields.includes(body["role"])) {
       return NextResponse.json(
         {
           success: false,
-          message: "No valid update field provided",
+          message: "Not a valid role to change."
         },
         { status: 400 }
-      );
+      )
     }
 
-    const userPrev = await UserModel.findOne({_id: params.id, companyId: token._id}).select("-passwordHashed");
+    const userPrev = await UserModel.findOne({
+      _id: paramsInfo.id,
+      companyId: token._id,
+    }).select("-passwordHashed");
 
-    if(!userPrev) {
+    if (!userPrev) {
       return NextResponse.json(
         {
           success: false,
           message: "No such User with that id found.",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     const user = await UserModel.findByIdAndUpdate(
-      { _id: params.id, companyId: token.companyId },
-      { $set: updates },
-      { new: true }
+      { _id: paramsInfo.id, companyId: token.companyId },
+      { $set: { role: body["role"] } },
+      { new: true },
     ).select("-passwordHashed");
 
-
     // 🧾 Audit log
-    await AuditLogModel.create(
-      {
-        action: "USER_UPDATED",
-        actorId: token._id,
-        targetType: "user",
-        targetId: user!._id,
-        meta: {
-          previous: Object.keys(updates).map((field) => ({
-            field,
-            value: (userPrev as any)[field],
-          })),
-          current: Object.keys(updates).map((field) => ({
-            field,
-            value: (user as any)[field],
-          })),
-          note: `User ${user!.name} updated by ${token.name}`,
-        },
-      }
-    );
+    await AuditLogModel.create({
+      action: "USER_ROLE_CHANGE",
+      actorId: token._id,
+      targetType: "user",
+      targetId: user!._id,
+      meta: {
+        previous: {"Role": userPrev.role},
+        current: {"Role": user?.role},
+        note: `User ${user!.name} role changed to ${body["role"]} by ${token.name}`,
+      },
+    });
 
     return NextResponse.json(
       {
@@ -106,7 +90,7 @@ export async function PATCH(
         message: "User data updated successfuly.",
         data: user,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.log("Error occured while updating user data", error);
@@ -116,7 +100,7 @@ export async function PATCH(
         message: "There was an error while updating user data.",
         error: error,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

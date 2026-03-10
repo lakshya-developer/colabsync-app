@@ -24,6 +24,7 @@ export const createTaskSchema = z.object({
   teamId: z.string().refine((id) => id.length === 24, {
     message: 'Invalid teamId format',
   }).optional(),
+  companyId: z.string().refine((id) => id.length === 24, { message: 'Invalid CompanyId'}),
   attachments: z.array(attachmentsSchema).optional(),
   startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Invalid date format',

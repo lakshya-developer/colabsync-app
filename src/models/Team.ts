@@ -16,7 +16,7 @@ const TeamSchema: Schema<Team> = new mongoose.Schema({
   description: {type: String},
   companyId: {type: mongoose.Types.ObjectId, required: [true, 'Company Id is required.']},
   managerId: {type: mongoose.Types.ObjectId, required: [true, 'Manager Id is required.']},
-  memberId: [{type: mongoose.Types.ObjectId, required: [true, 'Member Id is required.']}],
+  memberId: [{type: mongoose.Types.ObjectId}],
   createdBy: {type: mongoose.Types.ObjectId, required: [true, 'Created By is required.']},
   createdAt: {type: Date, default: Date.now},
   isDeleted: {type: Boolean, default: false}
