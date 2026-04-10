@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     const newTask = new TaskModel({
       title: parsed.data.title,
       description: parsed.data.description,
+      status: "pending",
       dueDate: parsed.data.dueDate,
       priority: parsed.data.priority,
       assignedId: parsed.data.assignedId,

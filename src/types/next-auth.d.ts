@@ -1,5 +1,6 @@
 import 'next-auth'
 import { DefaultSession } from 'next-auth';
+import mongoose from 'mongoose';
 
 
 declare module 'next-auth' {
@@ -8,7 +9,7 @@ declare module 'next-auth' {
     email?: string;
     isVerified?: boolean;
     role?: "admin" | "manager" | "employee";
-    companyId?: string;
+    companyId?: mongoose.Types.ObjectId;
   }
   interface Session{
     user: {
@@ -16,7 +17,7 @@ declare module 'next-auth' {
       email?: string;
       isVerified?: boolean;
       role?: "admin" | "manager" | "employee";
-      companyId?: string;
+      companyId?: mongoose.Types.ObjectId;
     } & DefaultSession['user']
   }
 }
@@ -27,6 +28,6 @@ declare module 'next-auth/jwt'{
     email?: string;
     isVerified?: boolean;
     role?: "admin" | "manager" | "employee";
-    companyId?: string;
+    companyId?: mongoose.Types.ObjectId;
   }
 }

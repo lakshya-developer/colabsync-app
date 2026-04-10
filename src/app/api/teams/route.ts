@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     const token = await getToken({req: request})
 
-    if(!token || (token.role !== 'admin' && token.role !== 'manager')) {
+    if(!token || token.role === 'employee') {
       return NextResponse.json(
         {
           success: false,

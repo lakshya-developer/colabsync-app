@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const existingUserWithEmail = await UserModel.findOne({ email });
 
     const  {code, codeHash, expiresAt} = await generateVerificationCode();
-    console.log(code)
+    // console.log(code);
 
     if(existingUserWithEmail) {
       if(existingUserWithEmail.isVerified) {

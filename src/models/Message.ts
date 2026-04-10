@@ -34,4 +34,4 @@ const MessageSchema: Schema = new Schema({
   editedAt: {type: Date},
 });
 
-export default (mongoose.models.Message as mongoose.Model<Message>) || mongoose.model<Message>('Message', MessageSchema);
+export const MessageModel = (mongoose.models.Message as mongoose.Model<Message>) || mongoose.model<Message>('Message', MessageSchema);

@@ -25,6 +25,7 @@ export interface Company extends Document {
     };
     custom: object;
   };
+  isDeleted: boolean;
   designations: string[];
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -75,6 +76,7 @@ const CompanySchema: Schema<Company> = new mongoose.Schema({
       defaault: {},
     },
   },
+  isDeleted: {type: Boolean},
   designations: { type: [String], default: [] },
   createdBy: {
     type: mongoose.Types.ObjectId,

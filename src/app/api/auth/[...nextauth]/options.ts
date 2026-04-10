@@ -48,7 +48,7 @@ export const authOptions: NextAuthOptions = {
         session.user.isVerified = token.isVerified
         session.user.companyId = token.companyId
         session.user.email = token.email
-        session.user.name = token.email
+        session.user.name = token.name
         session.user.role = token.role
       }
       return session

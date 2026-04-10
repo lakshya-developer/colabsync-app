@@ -27,7 +27,7 @@ export async function GET(
 
     const token = await getToken({ req: request });
 
-    if (!token) {
+    if (!token || !token.companyId) {
       return NextResponse.json(
         {
           success: false,
@@ -37,7 +37,7 @@ export async function GET(
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(token.companyId as string)) {
+    if (!mongoose.Types.ObjectId.isValid(token.companyId)) {
       return NextResponse.json(
         {
           success: false,
@@ -62,7 +62,7 @@ export async function GET(
       );
     }
 
-    if (token.companyId !== team.companyId.toString()) {
+    if (token.companyId !== team.companyId) {
       return NextResponse.json(
         {
           success: false,
@@ -113,7 +113,7 @@ export async function PUT(
       );
     }
 
-    if (mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
+    if (!mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
       return NextResponse.json(
         {
           success: false,
@@ -138,7 +138,7 @@ export async function PUT(
       );
     }
 
-    if (token.companyId !== team.companyId.toString()) {
+    if (token.companyId !== team.companyId) {
       return NextResponse.json(
         {
           success: false,
@@ -161,8 +161,9 @@ export async function PUT(
         updates[fields] = body[fields];
       }
     }
+    
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(updates).length === 0 && !body.memberIds) {
       return NextResponse.json(
         {
           success: false,
@@ -191,7 +192,7 @@ export async function PUT(
         }
   
         const newMembers = users.filter(
-          (u) => !team.memberId.some((id) => id.equals(u._id))
+          (u) => !team.memberId.some((users) => users.equals(u._id))
         );
   
         if (newMembers.length === 0) {
@@ -206,7 +207,7 @@ export async function PUT(
   
         await TeamModel.updateOne(
           { _id: paramsInfo.id, companyId: token.companyId },
-          { $addToSet: { memberIds: { $each: newMembers.map((u) => u._id) } } }
+          { $addToSet: { memberId: { $each: newMembers.map((id) => id) } } }
         ).session(session);
   
         await UserModel.updateMany(
@@ -273,6 +274,95 @@ export async function PUT(
       },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{id: string}>}
+){
+  await dbConnect();
+
+  try {
+    const paramsInfo = await params;
+    if(!mongoose.Types.ObjectId.isValid(paramsInfo.id)){
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Team Id is not a valid objected Id.'
+        },
+        { status: 400 }
+      )
+    }
+
+    const token = await getToken({ req: request });
+
+    if(!token || token.role === 'employee') {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Not authenticated or authorized to do this task.'
+        },
+        { status: 400 }
+      )
+    }
+
+    let teamPrev;
+    if(token.role === 'admin'){
+      teamPrev = await TeamModel.findOne({_id: paramsInfo.id, companyId: token.companyId});
+    } else{
+      teamPrev = await TeamModel.findOne({_id: paramsInfo.id, companyId: token.companyId, createdBy: token._id});
+    }
+
+    if(!teamPrev){
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'No such Team exist with that id or you are not authorized to remove.'
+        },
+        { status: 404 }
+      )
+    }
+
+    const removeTeam = await Transaction(async (session) => {
+      const teamRemove = await TeamModel.findOneAndUpdate(
+        { _id: paramsInfo.id, companyId: token.companyId },
+        { $set: { "isDeleted": true } }
+      ).session(session)
+
+      await AuditLogModel.create([{
+        action: "TEAM_REMOVED",
+        actorId: token._id,
+        targetType: "team",
+        targetId: paramsInfo.id,
+        meta: {
+          note: `${token.name} with id: ${token._id} removed team ${teamPrev.name} with id:  ${paramsInfo.id}`,
+        },
+      }], { session });
+
+      return teamPrev;
+    })
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Team removed successfully.',
+        data: removeTeam
+      },
+      { status: 200 }
+    )
+    
+  } catch (error) {
+    console.log("There was an error while removing Team: ", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'There was an error while removing Team.',
+        error
+      },
+      { status: 500 }
+    )
+    
   }
 }
 

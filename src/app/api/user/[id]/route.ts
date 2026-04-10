@@ -38,27 +38,29 @@ export async function GET(
       );
     }
 
-    const user = await UserModel.findOne({_id: paramsInfo.id, companyId: token.companyId})
+    const user = await UserModel.findOne({
+      _id: paramsInfo.id,
+      companyId: token.companyId,
+    });
 
-    if(!user){
+    if (!user) {
       return NextResponse.json(
         {
           succes: false,
-          message: 'User you are finding does not exist.'
+          message: "User you are finding does not exist.",
         },
-        { status: 404 }
-      )
+        { status: 404 },
+      );
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: 'User data',
-        data: user
+        message: "User data",
+        data: user,
       },
-      { status: 200 }
-    )
-
+      { status: 200 },
+    );
   } catch (error) {
     console.log("Error occured while getting user info: ", error);
     return NextResponse.json(
@@ -104,22 +106,70 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const allowedFields = ["name", "avatarUrl", "meta"];
-    const updates: any = {};
 
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updates[field] = body[field];
-      }
+    const allowedTopFields = ["name", "avatarUrl"];
+    const allowedMetaFields = [
+      "designation",
+      "assignedTeamId",
+      "deviceInfo",
+      "custom",
+    ];
+    const allowedPreferenceFields = ["language"];
+    const allowedNotificationFields = ["email", "push", "sound"];
+    const allowedOnboardingFields = ["isCompleted"]; // removed steps
+    const allowedChatFields: string[] = []; // removed mutedRooms, pinnedRooms
+
+    const updates: any = {};
+    const arrayUpdates: any = {};
+
+    for (const field of allowedTopFields) {
+      if (body[field] !== undefined) updates[field] = body[field];
     }
 
+    for (const field of allowedMetaFields) {
+      if (body.meta?.[field] !== undefined)
+        updates[`meta.${field}`] = body.meta[field];
+    }
+
+    for (const field of allowedPreferenceFields) {
+      if (body.meta?.preferences?.[field] !== undefined)
+        updates[`meta.preferences.${field}`] = body.meta.preferences[field];
+    }
+
+    for (const field of allowedNotificationFields) {
+      if (body.meta?.preferences?.notifications?.[field] !== undefined)
+        updates[`meta.preferences.notifications.${field}`] =
+          body.meta.preferences.notifications[field];
+    }
+
+    for (const field of allowedOnboardingFields) {
+      if (body.meta?.onboarding?.[field] !== undefined)
+        updates[`meta.onboarding.${field}`] = body.meta.onboarding[field];
+    }
+
+    // Arrays via $addToSet
+    if (body.meta?.onboarding?.steps?.length)
+      arrayUpdates["meta.onboarding.steps"] = {
+        $each: body.meta.onboarding.steps,
+      };
+
+    if (body.meta?.chat?.mutedRooms?.length)
+      arrayUpdates["meta.chat.mutedRooms"] = {
+        $each: body.meta.chat.mutedRooms,
+      };
+
+    if (body.meta?.chat?.pinnedRooms?.length)
+      arrayUpdates["meta.chat.pinnedRooms"] = {
+        $each: body.meta.chat.pinnedRooms,
+      };
+
     // If empty updates
-    if (Object.keys(updates).length === 0) {
+    if (
+      Object.keys(updates).length === 0 &&
+      Object.keys(arrayUpdates).length === 0
+    ) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "No valid update field provided",
-        },
+        { success: false, message: "No valid update field provided" },
         { status: 400 },
       );
     }
@@ -131,7 +181,10 @@ export async function PATCH(
 
     const user = await UserModel.findByIdAndUpdate(
       { _id: paramsInfo.id, companyId: token.companyId },
-      { $set: updates },
+      {
+        ...(Object.keys(updates).length && { $set: updates }),
+        ...(Object.keys(arrayUpdates).length && { $addToSet: arrayUpdates }),
+      },
       { new: true },
     ).select("-passwordHashed");
 
@@ -203,6 +256,17 @@ export async function DELETE(
         { status: 400 },
       );
     }
+    
+    // Valid Objected Id
+    if (!mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Id not valid",
+        },
+        { status: 400 },
+      );
+    }
 
     const user = await UserModel.findOne({
       _id: paramsInfo.id,
@@ -227,17 +291,6 @@ export async function DELETE(
         {
           success: false,
           message: "You don't have rights to do that.",
-        },
-        { status: 400 },
-      );
-    }
-
-    // Valid Objected Id
-    if (!mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Id not valid",
         },
         { status: 400 },
       );

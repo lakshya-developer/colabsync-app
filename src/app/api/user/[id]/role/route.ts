@@ -73,7 +73,7 @@ export async function PATCH(
 
     // 🧾 Audit log
     await AuditLogModel.create({
-      action: "USER_ROLE_CHANGE",
+      action?: "USER_ROLE_CHANGE",
       actorId: token._id,
       targetType: "user",
       targetId: user!._id,

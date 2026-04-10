@@ -58,7 +58,7 @@ const TaskSchema: Schema<Task> = new mongoose.Schema({
       commentedAt: { type: Date, default: Date.now }
     }
   ],
-  createdAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }, 
 }, { timestamps: true });
 
 

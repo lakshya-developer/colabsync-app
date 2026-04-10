@@ -4,6 +4,7 @@ export interface Room extends Document {
   type: string;
   participantsId: mongoose.Types.ObjectId[];
   teamId: mongoose.Types.ObjectId;
+  companyId: mongoose.Types.ObjectId;
   meta: RoomMeta;
 }
 
@@ -18,6 +19,7 @@ const RoomSchema: Schema<Room> = new Schema({
   type: { type: String, required: true },
   participantsId: [{ type: mongoose.Types.ObjectId, ref: 'User', required: true }],
   teamId: { type: mongoose.Types.ObjectId, ref: 'Team', required: true },
+  companyId: { type: mongoose.Types.ObjectId, ref: 'Company', required: true },
   meta: {
     createdAt: { type: Date, default: Date.now },
     lastMessageAt: { type: Date, default: Date.now },

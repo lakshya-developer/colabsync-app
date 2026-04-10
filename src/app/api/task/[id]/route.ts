@@ -215,36 +215,56 @@ export async function DELETE(
         { status: 400 }
       )
     }
-
+    
     const token = await getToken({req: request});
 
     if(!token || token.role === 'employee'){
       return NextResponse.json(
         {
           success:  false,
-          message: "You don't have access to delete."
+          message: "You are not authenticated to do this task."
         },
         { status: 400 }
       )
     }
 
-    const taskDelete = await TaskModel.findOneAndDelete({_id: paramsInfo.id, companyId: token.companyId});
+    const task = await TaskModel.findOne(
+      { _id: paramsInfo.id, companyId: token.companyId, creatorId: token._id}
+    )
 
-    if(!taskDelete){
+    if(!task){
       return NextResponse.json(
         {
-          success: false,
-          message: 'Task with that id does not exit.'
+          success:  false,
+          message: "Task with that id does not exist or You don't have access to delete."
         },
-        { status: 404 }
+        { status: 400 }
       )
     }
 
+    const deleteTask = await Transaction(async (session) => {
+      
+      const taskDelete = await TaskModel.findOneAndDelete({_id: paramsInfo.id, companyId: token.companyId}).session(session);
+      
+      await AuditLogModel.create([{
+        action: "TASk_UPDATED", 
+        actorId: token._id,
+        targetType: "task",
+        targetId: paramsInfo.id,
+        meta: {
+          previous: [{field: "task",value: task._id.toString()}],
+          current: [{field: "task",value: ""}],
+        },
+      }], {session})
+
+      return task;
+    })
+    
     return NextResponse.json(
       {
         success: true,
         message: 'Task deleted.',
-        data: taskDelete
+        data: deleteTask
       },
       { status: 200 }
     )
