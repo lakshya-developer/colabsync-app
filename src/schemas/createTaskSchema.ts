@@ -1,32 +1,58 @@
-import {z} from 'zod';
+import { z } from "zod";
+import mongoose from "mongoose";
+
+const objectIdSchema = z.string().refine(
+  mongoose.Types.ObjectId.isValid,
+  {
+    message: "Invalid ObjectId",
+  }
+);
+
+const dateSchema = z.string().refine(
+  (date) => !isNaN(Date.parse(date)),
+  {
+    message: "Invalid date format",
+  }
+);
 
 export const attachmentsSchema = z.object({
-  fileName: z.string().min(1, 'File name is required'),
+  fileName: z
+    .string()
+    .min(1, "File name is required"),
+
   file: z.instanceof(File),
-  uploadedBy: z.string().refine((id) => id.length === 24, {
-    message: 'Invalid uploadedBy format',
-  })
-})
+
+  uploadedBy: objectIdSchema,
+});
 
 export const createTaskSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
+  title: z
+    .string()
+    .min(1, "Title is required"),
+
   description: z.string().optional(),
-  dueDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid date format',
-  }).optional(),
-  priority: z.enum(['low', 'medium', 'high']).optional(),
-  assignedId: z.string().refine((id) => id.length === 24, {
-    message: 'Invalid assignedId format',
-  }),
-  creatorId: z.string().refine((id) => id.length === 24, {
-    message: 'Invalid creatorId format',
-  }),
-  teamId: z.string().refine((id) => id.length === 24, {
-    message: 'Invalid teamId format',
-  }).optional(),
-  companyId: z.string().refine((id) => id.length === 24, { message: 'Invalid CompanyId'}),
-  attachments: z.array(attachmentsSchema).optional(),
-  startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid date format',
-  }).optional(),
-})
+
+  dueDate: dateSchema.optional(),
+
+  priority: z
+    .enum(["low", "medium", "high"])
+    .optional(),
+
+  assignedId: objectIdSchema,
+
+  creatorId: objectIdSchema,
+
+  teamId: objectIdSchema.optional(),
+
+  companyId: objectIdSchema,
+
+  attachments: z
+    .array(attachmentsSchema)
+    .optional(),
+
+  startDate: dateSchema.optional(),
+});
+
+export type CreateTaskSchemaType = z.infer<
+  typeof createTaskSchema
+>;
