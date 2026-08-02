@@ -76,6 +76,46 @@ io.use(socketAuth);
 // ─── Connection Lifecycle ────────────────────────────────
 registerConnectionEvents(io);
 
+async function listenWithFallback(basePort) {
+  const candidates = [basePort, basePort + 1, basePort + 2, basePort + 3, basePort + 4];
+
+  for (const port of candidates) {
+    try {
+      await new Promise((resolve, reject) => {
+        const onError = (error) => {
+          server.off("error", onError);
+          server.off("listening", onListening);
+          reject(error);
+        };
+
+        const onListening = () => {
+          server.off("error", onError);
+          server.off("listening", onListening);
+          resolve(port);
+        };
+
+        server.once("error", onError);
+        server.once("listening", onListening);
+        server.listen(port);
+      });
+
+      return port;
+    } catch (error) {
+      if (error.code !== "EADDRINUSE") {
+        throw error;
+      }
+
+      logger.warn(`Port ${port} is busy. Trying the next available port.`, {
+        attemptedPort: port,
+      });
+    }
+  }
+
+  throw new Error(
+    `Unable to start socket server. Tried ports: ${candidates.join(", ")}`
+  );
+}
+
 // ─── Startup ─────────────────────────────────────────────
 async function start() {
   logger.info("Starting CollabSync Socket Server...", {
@@ -87,15 +127,12 @@ async function start() {
   await connectDB();
 
   // 2. Start HTTP + Socket.IO server
-  server.listen(config.port, () => {
-    logger.info(
-      `Socket server listening on http://localhost:${config.port}`,
-      {
-        cors: config.cors.origins,
-        pingTimeout: config.socket.pingTimeout,
-        pingInterval: config.socket.pingInterval,
-      }
-    );
+  const port = await listenWithFallback(config.port);
+
+  logger.info(`Socket server listening on http://localhost:${port}`, {
+    cors: config.cors.origins,
+    pingTimeout: config.socket.pingTimeout,
+    pingInterval: config.socket.pingInterval,
   });
 }
 
