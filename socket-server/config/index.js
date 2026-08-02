@@ -4,6 +4,7 @@
  */
 
 require("dotenv").config();
+const logger = require("../utils/logger");
 
 const config = {
   // ─── Server ────────────────────────────────────────────
@@ -22,7 +23,7 @@ const config = {
 
   // ─── MongoDB ───────────────────────────────────────────
   mongodb: {
-    uri: process.env.MONGODB_URI,
+    uri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/collabsync",
     options: {
       maxPoolSize: parseInt(process.env.MONGO_POOL_SIZE, 10) || 10,
       serverSelectionTimeoutMS: 5000,
@@ -34,7 +35,7 @@ const config = {
 
   // ─── JWT (aligned with NextAuth) ───────────────────────
   jwt: {
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: process.env.NEXTAUTH_SECRET || "dev-secret-change-me",
   },
 
   // ─── Socket.IO ─────────────────────────────────────────
@@ -69,16 +70,23 @@ const config = {
 // ─── Validation ──────────────────────────────────────────
 function validateConfig() {
   const required = [
-    ["mongodb.uri", config.mongodb.uri],
-    ["jwt.secret", config.jwt.secret],
+    ["mongodb.uri", process.env.MONGODB_URI],
+    ["jwt.secret", process.env.NEXTAUTH_SECRET],
   ];
 
   const missing = required.filter(([, value]) => !value);
 
   if (missing.length > 0) {
     const names = missing.map(([name]) => name).join(", ");
-    throw new Error(
-      `[Config] Missing required environment variables: ${names}`
+
+    if (config.isProduction) {
+      throw new Error(
+        `[Config] Missing required environment variables: ${names}`
+      );
+    }
+
+    logger.warn(
+      `[Config] Using development defaults for missing environment variables: ${names}`
     );
   }
 }

@@ -58,4 +58,15 @@ const AuditLogSchema: Schema<AuditLog> = new mongoose.Schema({
   },
 })
 
-export const AuditLogModel = (mongoose.models.AuditLog as mongoose.Model<AuditLog>) || mongoose.model<AuditLog>("AuditLog", AuditLogSchema);
+const AuditLogModelBase: any = mongoose.models.AuditLog || mongoose.model("AuditLog", AuditLogSchema);
+
+export const AuditLogModel = Object.assign(AuditLogModelBase, {
+  async create(docs: any, options?: any) {
+    if (Array.isArray(docs)) {
+      return Promise.all(docs.map((doc) => new AuditLogModelBase(doc).save({ session: options?.session })));
+    }
+
+    const entry = new AuditLogModelBase(docs);
+    return entry.save({ session: options?.session });
+  },
+});
