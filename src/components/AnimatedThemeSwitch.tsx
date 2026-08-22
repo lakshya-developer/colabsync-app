@@ -26,7 +26,7 @@ export default function AnimatedThemeSwitch() {
             exit={{ rotate: 90, opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Moon className="w-5 h-5 text-white" />
+            <Moon className="w-5 h-5 text-brand-green" />
           </motion.div>
         ) : (
           <motion.div
@@ -36,7 +36,7 @@ export default function AnimatedThemeSwitch() {
             exit={{ rotate: -90, opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Sun className="w-5 h-5 text-black" />
+            <Sun className="w-5 h-5 text-brand-blue" />
           </motion.div>
         )}
       </AnimatePresence>

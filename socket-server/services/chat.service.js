@@ -19,16 +19,25 @@ const logger = require("../utils/logger");
  */
 async function validateMembership(userId, roomId) {
   try {
+    // First, check if the room is general/announcement — those are open to all company members
     const room = await Room.findOne({
       _id: roomId,
-      participantsId: userId,
       "meta.isArchived": { $ne: true },
     }).lean();
 
-    return {
-      isMember: !!room,
-      room,
-    };
+    if (!room) return { isMember: false, room: null };
+
+    // General and announcement rooms are open to all company members
+    if (room.type === 'general' || room.type === 'announcement') {
+      return { isMember: true, room };
+    }
+
+    // For direct and team rooms, check explicit participant enrollment
+    const isMember = room.participantsId
+      ? room.participantsId.some((id) => id.toString() === userId.toString())
+      : false;
+
+    return { isMember, room };
   } catch (error) {
     logger.error("Error validating room membership", {
       userId,

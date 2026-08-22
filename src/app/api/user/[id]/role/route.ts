@@ -52,7 +52,7 @@ export async function PATCH(
 
     const userPrev = await UserModel.findOne({
       _id: paramsInfo.id,
-      companyId: token._id,
+      companyId: token.companyId,
     }).select("-passwordHashed");
 
     if (!userPrev) {
@@ -103,4 +103,12 @@ export async function PATCH(
       { status: 500 },
     );
   }
+}
+
+// PUT is also accepted (some pages use PUT, others PATCH)
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return PATCH(request, context);
 }

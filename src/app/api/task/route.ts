@@ -14,13 +14,13 @@ export async function POST(request: NextRequest) {
     
     const token = await getToken({req: request})
 
-    if(!token || token.role === 'employee') {
+    if(!token?._id || !token?.companyId) {
       return NextResponse.json(
         {
           success: false,
-          message: 'You are not authenticated or authorozed to do this task.'
+          message: 'You are not authenticated.'
         },
-        { status: 400 }
+        { status: 401 }
       )
     }
 

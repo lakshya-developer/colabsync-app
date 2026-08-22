@@ -93,6 +93,15 @@ export async function GET(
   }
 }
 
+// ─── PATCH — alias for PUT (frontend uses PATCH for rename) ──────────────────
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return PUT(request, context);
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -417,7 +426,8 @@ export async function DELETE(
         companyId: token.companyId,
       }).session(session);
 
-      const manager = await UserModel.updateOne(
+      // Clear manager assignment if one exists
+      await UserModel.updateOne(
         {
           role: "manager",
           "meta.assignedTeamId": paramsInfo.id,
@@ -428,33 +438,14 @@ export async function DELETE(
         }
       ).session(session);
 
-      if (manager.matchedCount === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "No manager found or assigned to team.",
-          },
-          { status: 404 }
-        );
-      }
-
-      const users = await UserModel.updateMany(
+      // Clear member assignments
+      await UserModel.updateMany(
         {
           "meta.assignedTeamId": paramsInfo.id,
           companyId: token.companyId,
         },
         { $set: { "meta.assignedTeamId": null } }
       ).session(session);
-
-      if (users.matchedCount === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "No user found assigned to this team.",
-          },
-          { status: 500 }
-        );
-      }
 
       await AuditLogModel.create([{
         action: "TEAM_DELETED",

@@ -7,3 +7,13 @@
 :root {
   font-family: var(--font-jakarta), sans-serif;
 }
+
+/* CollabSync brand colours — registered as Tailwind v4 theme tokens */
+@theme {
+  --color-brand-blue:         #2E7DC5;
+  --color-brand-blue-light:   #5BA3E0;
+  --color-brand-blue-dark:    #1A5C9A;
+  --color-brand-green:        #4ABF6A;
+  --color-brand-green-light:  #72D48B;
+  --color-brand-green-dark:   #2E9B4E;
+}

@@ -20,7 +20,7 @@ export const attachmentsSchema = z.object({
     .string()
     .min(1, "File name is required"),
 
-  file: z.instanceof(File),
+  fileUrl: z.string().url("File URL must be a valid URL"),
 
   uploadedBy: objectIdSchema,
 });
@@ -32,23 +32,24 @@ export const createTaskSchema = z.object({
 
   description: z.string().optional(),
 
-  dueDate: dateSchema.optional(),
+  dueDate: dateSchema,
 
   priority: z
-    .enum(["low", "medium", "high"])
-    .optional(),
+    .enum(["low", "medium", "high", "critical"])
+    .default("medium"),
 
   assignedId: objectIdSchema,
 
   creatorId: objectIdSchema,
 
-  teamId: objectIdSchema.optional(),
+  teamId: objectIdSchema.optional().nullable(),
 
   companyId: objectIdSchema,
 
   attachments: z
     .array(attachmentsSchema)
-    .optional(),
+    .optional()
+    .default([]),
 
   startDate: dateSchema.optional(),
 });

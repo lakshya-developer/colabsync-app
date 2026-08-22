@@ -7,75 +7,76 @@ import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
 
-export async function GET(request: NextRequest, {params}: {params: Promise< {id: string}>}
-){
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   await dbConnect();
 
   try {
     const paramsInfo = await params;
-    if(!mongoose.Types.ObjectId.isValid(paramsInfo.id)){
+
+    if (!mongoose.Types.ObjectId.isValid(paramsInfo.id)) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "No valid room id provided."
-        },
+        { success: false, message: "No valid room id provided." },
         { status: 400 }
-      )
+      );
     }
 
-    const token = await getToken({req: request});
-    if(!token){
+    const token = await getToken({ req: request });
+    if (!token || !token._id) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Not Authenticated to get information.'
-        },
-        { status: 400 }
-      )
+        { success: false, message: "Not authenticated to get messages." },
+        { status: 401 }
+      );
     }
 
-    const room = await RoomModel.findOne({_id: paramsInfo.id, companyId: token.companyId, participantsId: token._id});
-    if(!room){
+    // Allow access to general/announcement rooms without strict participant check
+    const room = await RoomModel.findOne({
+      _id: paramsInfo.id,
+      companyId: token.companyId,
+    });
+    if (!room) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'No such room found with that id.'
-        },
+        { success: false, message: "No such room found." },
         { status: 404 }
-      )
+      );
     }
 
-    const messages = await MessageModel.findOne({roomId: paramsInfo.id}).limit(20);
-    if(!messages){
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'No Messages found.'
-        },
-        { status: 404 }
-      )
+    const { searchParams } = new URL(request.url);
+    const before = searchParams.get("before"); // cursor: load messages before this ID
+    const limit = Math.min(parseInt(searchParams.get("limit") ?? "50"), 100);
+
+    const query: Record<string, unknown> = { roomId: paramsInfo.id };
+    if (before && mongoose.Types.ObjectId.isValid(before)) {
+      query._id = { $lt: new mongoose.Types.ObjectId(before) };
     }
+
+    // Fetch messages and populate sender name + avatar
+    const messages = await MessageModel.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate("senderId", "name avatarUrl")
+      .lean();
+
+    // Return in chronological order (oldest first)
+    const ordered = [...messages].reverse();
 
     return NextResponse.json(
       {
         success: true,
-        message: 'Messages Array',
-        data: messages
+        message: "Messages fetched successfully.",
+        data: ordered,
+        hasMore: messages.length === limit,
       },
       { status: 200 }
-    )
-
+    );
   } catch (error) {
-    console.log("There was an error while getting messages.");
+    console.error("Error fetching messages:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: 'There was an error while getting messages.',
-        error
-      },
+      { success: false, message: "There was an error while getting messages." },
       { status: 500 }
-    )
-    
+    );
   }
 }
 

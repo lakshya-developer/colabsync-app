@@ -5,6 +5,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "../context/ThemeProvider"
 import AuthProvider from "@/context/AuthProvider";
+import { CompanyProvider } from "@/context/CompanyContext";
+import { SocketProvider } from "@/context/SocketContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,10 +46,15 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AuthProvider>
-            {children}
+            <CompanyProvider>
+              <SocketProvider>
+                {children}
+              </SocketProvider>
+            </CompanyProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+

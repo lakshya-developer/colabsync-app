@@ -51,6 +51,8 @@ const TaskSchema: Schema<Task> = new mongoose.Schema({
       uploadedAt: { type: Date, default: Date.now }
     }
   ],
+  teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
+  startDate: { type: Date },
   comments: [
     {
       commenterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

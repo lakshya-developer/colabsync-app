@@ -106,28 +106,16 @@ export async function PATCH(
     }
 
     const companyInfo = await CompanyModel.findOne({
-      _id: paramsInfo.id,
-      createdBy: token._id,
+      _id: new mongoose.Types.ObjectId(String(token.companyId)),
     });
 
-    if (!companyInfo ) {
+    if (!companyInfo) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "the workspace does not exist.",
+          message: "The workspace does not exist or you don't have access.",
         },
-        { status: 400 },
-      );
-    }
-    if (!companyInfo._id.equals(token.companyId)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "You are not authorized to update workspace.",
-        },
-        { status: 400 },
+        { status: 404 },
       );
     }
 

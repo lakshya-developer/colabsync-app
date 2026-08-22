@@ -93,13 +93,13 @@ export async function PUT(
 
     const token = await getToken({req: request})
 
-    if(!token || token.role === 'employee') {
+    if(!token) {
       return NextResponse.json(
         {
           success: false,
           message: 'Not authorized to do this task.'
         },
-        { status: 400 }
+        { status: 401 }
       )
     }
 
@@ -115,8 +115,22 @@ export async function PUT(
       )
     }
 
+    // Employees can only update the status of their own assigned tasks
+    if (token.role === 'employee' && String(task.assignedId) !== String(token._id)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'You can only update tasks assigned to you.'
+        },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json();
-    const allowedFields = ['title','description','status','priority','assignedId','dueDate','attachments','comments']
+    // Employees can only change status; admins/managers can change more
+    const allowedFields = token.role === 'employee'
+      ? ['status']
+      : ['title','description','status','priority','assignedId','dueDate','attachments','comments']
     const updates: any = {}
 
     for(const fields of allowedFields) {
@@ -155,7 +169,7 @@ export async function PUT(
       }
 
       await AuditLogModel.create([{
-        action: "TASk_UPDATED",
+        action: "TASK_UPDATED",
         actorId: token._id,
         targetType: "task",
         targetId: paramsInfo.id,
