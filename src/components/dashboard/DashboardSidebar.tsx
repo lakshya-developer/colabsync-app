@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import {
   LayoutDashboard,
   Users,
@@ -90,14 +91,12 @@ function NavItem({
     <li title={collapsed ? label : undefined}>
       <Link
         href={href}
-        className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-          isActive ? activeBg : `${textBase} ${hoverBg}`
-        } ${collapsed ? 'justify-center px-0' : ''}`}
+        className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isActive ? activeBg : `${textBase} ${hoverBg}`
+          } ${collapsed ? 'justify-center px-0' : ''}`}
       >
         <Icon
-          className={`h-4 w-4 shrink-0 transition-colors ${
-            isActive ? 'text-brand-blue' : `${muted} group-hover:text-brand-blue`
-          }`}
+          className={`h-4 w-4 shrink-0 transition-colors ${isActive ? 'text-brand-blue' : `${muted} group-hover:text-brand-blue`
+            }`}
         />
         {!collapsed && (
           <>
@@ -120,6 +119,7 @@ export default function DashboardSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [signOutDialog, setSignOutDialog] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -153,9 +153,8 @@ export default function DashboardSidebar() {
 
   return (
     <aside
-      className={`relative flex h-screen shrink-0 flex-col border-r ${border} ${bg} transition-all duration-300 ease-in-out ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
+      className={`relative flex h-screen shrink-0 flex-col border-r ${border} ${bg} transition-all duration-300 ease-in-out ${collapsed ? 'w-16' : 'w-64'
+        }`}
     >
       {/* ── Company header + toggle ──────────────────────── */}
       {collapsed ? (
@@ -179,11 +178,10 @@ export default function DashboardSidebar() {
           <button
             onClick={toggleCollapse}
             title="Expand sidebar"
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
-              isDark
-                ? 'text-zinc-500 hover:bg-zinc-800 hover:text-brand-blue'
-                : 'text-zinc-400 hover:bg-zinc-100 hover:text-brand-blue'
-            }`}
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${isDark
+              ? 'text-zinc-500 hover:bg-zinc-800 hover:text-brand-blue'
+              : 'text-zinc-400 hover:bg-zinc-100 hover:text-brand-blue'
+              }`}
           >
             <PanelLeftOpen className="h-4 w-4" />
           </button>
@@ -223,11 +221,10 @@ export default function DashboardSidebar() {
           <button
             onClick={toggleCollapse}
             title="Collapse sidebar"
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition ${
-              isDark
-                ? 'text-zinc-500 hover:bg-zinc-800 hover:text-brand-blue'
-                : 'text-zinc-400 hover:bg-zinc-100 hover:text-brand-blue'
-            }`}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition ${isDark
+              ? 'text-zinc-500 hover:bg-zinc-800 hover:text-brand-blue'
+              : 'text-zinc-400 hover:bg-zinc-100 hover:text-brand-blue'
+              }`}
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -336,7 +333,7 @@ export default function DashboardSidebar() {
                 </span>
               </div>
               <button
-                onClick={() => signOut({ callbackUrl: '/sign-in' })}
+                onClick={() => setSignOutDialog(true)}
                 className={`rounded-lg p-1.5 transition ${hoverBg} ${muted} hover:text-red-400`}
                 title="Sign out"
               >
@@ -347,7 +344,7 @@ export default function DashboardSidebar() {
 
           {collapsed && (
             <button
-              onClick={() => signOut({ callbackUrl: '/sign-in' })}
+              onClick={() => setSignOutDialog(true)}
               className={`rounded-lg p-1.5 transition ${hoverBg} ${muted} hover:text-red-400`}
               title="Sign out"
             >
@@ -356,6 +353,22 @@ export default function DashboardSidebar() {
           )}
         </div>
       </div>
+
+      {/* ── Sign-out confirmation ─────────────────────────── */}
+      <ConfirmDialog
+        open={signOutDialog}
+        title="Sign out of CollabSync?"
+        description="You will be redirected to the sign-in page. Any unsaved changes may be lost."
+        confirmLabel="Yes, sign out"
+        cancelLabel="Stay signed in"
+        variant="danger"
+        icon="logout"
+        onConfirm={() => {
+          setSignOutDialog(false);
+          signOut({ callbackUrl: '/sign-in' });
+        }}
+        onCancel={() => setSignOutDialog(false)}
+      />
     </aside>
   );
 }

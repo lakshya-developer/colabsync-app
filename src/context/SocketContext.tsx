@@ -41,6 +41,8 @@ const SocketContext = createContext<SocketContextValue>({
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const [isConnected, setIsConnected] = useState(false);
+  // Mirror socket into state so consumers re-render when it becomes available
+  const [socketState, setSocketState] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,6 +66,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
+      setSocketState(null);
     }
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
@@ -84,6 +87,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     });
 
     socketRef.current = socket;
+    // Expose socket via state so consumers re-render
+    setSocketState(socket);
 
     socket.on('connect', () => {
       setIsConnected(true);
@@ -97,6 +102,26 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       console.warn('[SocketContext] connect_error:', err.message);
       setIsConnected(false);
     });
+
+    // debug code for brodcast emit function
+
+    socket.on("connect", () => {
+      console.log("🟢 SOCKET CONNECTED:", socket.id);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("🔴 SOCKET DISCONNECTED:", reason);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("❌ SOCKET ERROR:", error);
+    });
+
+    socket.onAny((event, ...args) => {
+      console.log("📨 SOCKET EVENT:", event, args);
+    });
+
+    // debug code ends for emit brodcast
 
     // Schedule token refresh 30 minutes before expiry
     const refreshInMs = Math.max((expiresIn - 30 * 60) * 1000, 60_000);
@@ -115,6 +140,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
+        setSocketState(null);
       }
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
@@ -125,7 +151,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [status, connect]);
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, isConnected }}>
+    <SocketContext.Provider value={{ socket: socketState, isConnected }}>
       {children}
     </SocketContext.Provider>
   );
@@ -135,4 +161,32 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
 export function useSocket(): SocketContextValue {
   return useContext(SocketContext);
+}
+
+/**
+ * Subscribe to a socket event without managing on/off lifecycle yourself.
+ *
+ * The latest `handler` is always read from a ref, so:
+ *  - No stale closure when handler deps change (e.g. activeRoom)
+ *  - The subscription is only torn down when the socket instance itself
+ *    changes (token refresh / reconnect), not on every handler update.
+ */
+export function useSocketEvent<T = any>(
+  event: string,
+  handler: (payload: T) => void,
+) {
+  const { socket } = useSocket();
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const wrapped = (payload: T) => handlerRef.current(payload);
+    socket.on(event, wrapped);
+
+    return () => {
+      socket.off(event, wrapped);
+    };
+  }, [socket, event]);
 }

@@ -89,15 +89,15 @@ export interface DashboardData {
 export function useDashboard(): DashboardData {
   const { data: session, status } = useSession();
 
-  const [stats, setStats]               = useState<DashboardStats | null>(null);
-  const [activity, setActivity]         = useState<ActivityItem[]>([]);
-  const [teams, setTeams]               = useState<TeamHealth[]>([]);
-  const [members, setMembers]           = useState<TeamMember[]>([]);
-  const [tasks, setTasks]               = useState<TaskItem[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [teams, setTeams] = useState<TeamHealth[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount]   = useState(0);
-  const [isLoading, setIsLoading]       = useState(true);
-  const [error, setError]               = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const role = session?.user?.role ?? 'employee';
 
@@ -130,7 +130,7 @@ export function useDashboard(): DashboardData {
 
       if (role === 'admin') {
         const activityData = data[idx++];
-        const teamsData    = data[idx++];
+        const teamsData = data[idx++];
         setActivity(activityData.activity ?? []);
         setTeams(teamsData.teams ?? []);
       } else if (role === 'manager') {
@@ -140,7 +140,7 @@ export function useDashboard(): DashboardData {
         setMembers(teamsData.members ?? []);
         setTasks(tasksData.tasks ?? []);
       } else {
-        const tasksData         = data[idx++];
+        const tasksData = data[idx++];
         const notificationsData = data[idx++];
         setTasks(tasksData.tasks ?? []);
         setNotifications(notificationsData.notifications ?? []);

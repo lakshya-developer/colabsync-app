@@ -1,25 +1,47 @@
-import { getServerSession } from 'next-auth';
-import { NextResponse } from 'next/server';
-import { authOptions } from '../../auth/[...nextauth]/options';
-import dbConnect from '@/lib/dbConnect';
-import CompanyModel from '@/models/Company';
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import dbConnect from "@/lib/dbConnect";
+import CompanyModel from "@/models/Company";
+import mongoose from "mongoose";
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
+/**
+ * GET /api/company/me
+ *
+ * Returns the full Company document for the authenticated user s company.
+ * Used by CompanyContext to populate the sidebar company name, avatar, and settings.
+ */
+export async function GET(request: NextRequest) {
+  const token = await getToken({ req: request });
 
-  if (!session?.user?.companyId) {
-    return NextResponse.json({ message: 'Unauthorised' }, { status: 401 });
+  if (!token?._id || !token?.companyId) {
+    return NextResponse.json({ message: "Unauthorised" }, { status: 401 });
   }
 
   await dbConnect();
 
-  const company = await CompanyModel.findById(session.user.companyId).select(
-    'name avatarUrl slug designations settings',
-  );
+  try {
+    const companyId = new mongoose.Types.ObjectId(String(token.companyId));
 
-  if (!company) {
-    return NextResponse.json({ message: 'Company not found' }, { status: 404 });
+    const company = await CompanyModel.findById(companyId).lean();
+
+    if (!company) {
+      return NextResponse.json({ message: "Company not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      company: {
+        _id:          String(company._id),
+        name:         company.name,
+        domain:       company.domain ?? null,
+        avatarUrl:    company.avatarUrl ?? null,
+        slug:         company.slug,
+        designations: company.designations ?? [],
+        settings:     company.settings ?? {},
+      },
+    });
+  } catch (error) {
+    console.error("[GET /api/company/me]", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
-
-  return NextResponse.json({ company }, { status: 200 });
 }

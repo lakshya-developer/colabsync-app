@@ -52,10 +52,26 @@ function emitToTeam(teamId, event, data) {
  * @param {string} event
  * @param {object} data
  */
+// function emitToRoom(roomId, event, data) {
+//   const room = `${config.roomPrefix.room}${roomId}`;
+//   logger.debug(`Emit → ${room} [${event}]`);
+//   getIO().to(room).emit(event, data);
+// }
 function emitToRoom(roomId, event, data) {
   const room = `${config.roomPrefix.room}${roomId}`;
-  logger.debug(`Emit → ${room} [${event}]`);
-  getIO().to(room).emit(event, data);
+
+  const io = getIO();
+  const roomSockets = io.sockets.adapter.rooms.get(room);
+
+  logger.debug("📡 BROADCAST", {
+    room,
+    event,
+    socketCount: roomSockets ? roomSockets.size : 0,
+    sockets: roomSockets ? [...roomSockets] : [],
+    messageId: data?._id,
+  });
+
+  io.to(room).emit(event, data);
 }
 
 module.exports = {

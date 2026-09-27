@@ -21,7 +21,7 @@ export const createTeamSchema = z.object({
 
   managerId: objectIdSchema.optional(),
 
-  createdBy: objectIdSchema,
+  createdBy: objectIdSchema.optional(),
 });
 
 export type CreateTeamSchemaType = z.infer<

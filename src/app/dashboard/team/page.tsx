@@ -137,7 +137,7 @@ export default function MyTeamPage() {
 
   const panel = isDark ? 'border-zinc-800 bg-zinc-900/60' : 'border-zinc-200 bg-zinc-50';
   const muted = isDark ? 'text-zinc-500' : 'text-zinc-400';
-  const hdr   = isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-zinc-50 border-zinc-200';
+  const hdr = isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-zinc-50 border-zinc-200';
 
   if (!mounted || status === 'loading') {
     return (
@@ -196,10 +196,10 @@ export default function MyTeamPage() {
       ) : team && (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatCard label="Team Size"      value={team.memberCount}    accent="blue"  icon={Users}        isDark={isDark} />
-            <StatCard label="Total Tasks"    value={team.totalTasks}     accent="blue"  icon={Target}       isDark={isDark} />
-            <StatCard label="Completed"      value={team.completedTasks} accent="green" icon={CheckCircle}  isDark={isDark} />
-            <StatCard label="Completion"     value={`${team.completionPct}%`} accent="green" icon={TrendingUp} isDark={isDark} />
+            <StatCard label="Team Size" value={team.memberCount} accent="blue" icon={Users} isDark={isDark} />
+            <StatCard label="Total Tasks" value={team.totalTasks} accent="blue" icon={Target} isDark={isDark} />
+            <StatCard label="Completed" value={team.completedTasks} accent="green" icon={CheckCircle} isDark={isDark} />
+            <StatCard label="Completion" value={`${team.completionPct}%`} accent="green" icon={TrendingUp} isDark={isDark} />
           </div>
 
           {/* ── Progress overview ─────────────────────────────────────────── */}

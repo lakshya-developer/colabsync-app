@@ -8,6 +8,92 @@ import { createTeamSchema } from "@/schemas/createTeamShema";
 import mongoose from "mongoose";
 import TeamModel from "@/models/Team";
 
+/**
+ * GET /api/teams
+ *
+ * Returns teams scoped by role:
+ *   admin   → all teams in the company with member count
+ *   manager → only their assigned team
+ *   employee → []
+ */
+export async function GET(request: NextRequest) {
+  await dbConnect();
+
+  try {
+    const token = await getToken({ req: request });
+
+    if (!token?._id || !token?.companyId) {
+      return NextResponse.json(
+        { success: false, message: "Not authenticated." },
+        { status: 401 }
+      );
+    }
+
+    if (token.role === "employee") {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    const companyId = new mongoose.Types.ObjectId(String(token.companyId));
+    const userId    = new mongoose.Types.ObjectId(String(token._id));
+
+    if (token.role === "admin") {
+      const teams = await TeamModel.find({ companyId, isDeleted: { $ne: true } }).lean();
+
+      const teamsWithCounts = await Promise.all(
+        teams.map(async (team) => {
+          const memberCount = await UserModel.countDocuments({
+            "meta.assignedTeamId": team._id,
+          });
+          return {
+            _id:         String(team._id),
+            name:        team.name,
+            description: team.description ?? "",
+            managerId:   team.managerId ? String(team.managerId) : null,
+            memberCount,
+            createdAt:   team.createdAt,
+          };
+        })
+      );
+
+      return NextResponse.json({ success: true, data: teamsWithCounts });
+    }
+
+    // Manager — return only their assigned team
+    const team = await TeamModel.findOne({
+      managerId: userId,
+      companyId,
+      isDeleted: { $ne: true },
+    }).lean();
+
+    if (!team) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    const memberCount = await UserModel.countDocuments({
+      "meta.assignedTeamId": team._id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: [
+        {
+          _id:         String(team._id),
+          name:        team.name,
+          description: team.description ?? "",
+          managerId:   team.managerId ? String(team.managerId) : null,
+          memberCount,
+          createdAt:   team.createdAt,
+        },
+      ],
+    });
+  } catch (error) {
+    console.error("[GET /api/teams]", error);
+    return NextResponse.json(
+      { success: false, message: "There was an error while fetching teams." },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   dbConnect();

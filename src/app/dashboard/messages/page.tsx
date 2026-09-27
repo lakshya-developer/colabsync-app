@@ -18,7 +18,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
-import { useSocket } from '@/context/SocketContext';
+import { useSocket, useSocketEvent } from '@/context/SocketContext';
 import {
   useEffect,
   useRef,
@@ -381,55 +381,46 @@ export default function MessagesPage() {
   const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // ── Socket events ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!socket) return;
+  //
+  // useSocketEvent reads the latest handler via a ref internally, so:
+  //  • No stale closure on activeRoom — switching rooms never causes a missed-
+  //    message window while the old listener tears down and the new one attaches.
+  //  • No duplicate subscription when the socket instance is replaced on
+  //    token refresh.
 
-    const onNewMessage = (msg: ChatMessage) => {
-      if (!activeRoom || msg.roomId !== activeRoom._id) return;
-      setMessages((prev) => {
-        // Deduplicate by _id
-        if (prev.some((m) => m._id === msg._id)) return prev;
-        return [...prev, msg];
-      });
-      // Clear typing for sender
-      const senderId = typeof msg.senderId === 'object' ? msg.senderId._id : msg.senderId;
-      setTypingUsers((prev) => {
-        const next = { ...prev };
-        delete next[senderId];
-        return next;
-      });
-    };
+  useSocketEvent<ChatMessage>('message:new', (msg) => {
+    // Normalize both sides to string — msg.roomId comes from Mongoose's
+    // .toObject() which keeps it as a MongoDB ObjectId, not a plain string.
+    if (!activeRoom || String(msg.roomId) !== String(activeRoom._id)) return;
 
-    const onTyping = ({ userId, userName, isTyping, roomId }: any) => {
-      if (!activeRoom || roomId !== activeRoom._id || userId === myId) return;
-      if (isTyping) {
-        setTypingUsers((prev) => ({ ...prev, [userId]: userName }));
-        // Auto-clear after 4s
-        if (typingTimers.current[userId]) clearTimeout(typingTimers.current[userId]);
-        typingTimers.current[userId] = setTimeout(() => {
-          setTypingUsers((prev) => {
-            const next = { ...prev };
-            delete next[userId];
-            return next;
-          });
-        }, 4000);
-      } else {
-        setTypingUsers((prev) => {
-          const next = { ...prev };
-          delete next[userId];
-          return next;
-        });
-      }
-    };
+    setMessages((prev) => {
+      if (prev.some((m) => m._id === msg._id)) return prev; // deduplicate
+      return [...prev, msg];
+    });
 
-    socket.on('message:new', onNewMessage);
-    socket.on('message:typing', onTyping);
+    // Clear typing indicator for the sender
+    const senderId = typeof msg.senderId === 'object'
+      ? (msg.senderId as any)._id
+      : msg.senderId;
+    setTypingUsers((prev) => {
+      const next = { ...prev };
+      delete next[senderId];
+      return next;
+    });
+  });
 
-    return () => {
-      socket.off('message:new', onNewMessage);
-      socket.off('message:typing', onTyping);
-    };
-  }, [socket, activeRoom, myId]);
+  useSocketEvent('message:typing', ({ userId, userName, isTyping, roomId }: any) => {
+    if (!activeRoom || String(roomId) !== String(activeRoom._id) || userId === myId) return;
+    if (isTyping) {
+      setTypingUsers((prev) => ({ ...prev, [userId]: userName }));
+      if (typingTimers.current[userId]) clearTimeout(typingTimers.current[userId]);
+      typingTimers.current[userId] = setTimeout(() => {
+        setTypingUsers((prev) => { const next = { ...prev }; delete next[userId]; return next; });
+      }, 4000);
+    } else {
+      setTypingUsers((prev) => { const next = { ...prev }; delete next[userId]; return next; });
+    }
+  });
 
   // Re-join room when socket reconnects
   useEffect(() => {

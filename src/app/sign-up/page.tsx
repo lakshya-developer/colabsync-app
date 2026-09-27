@@ -335,7 +335,7 @@ export default function SignUpPage() {
             </button>
 
             <p className={`mt-4 text-center text-xs ${muted}`}>
-              A verification code will be sent to your email.
+              You'll be asked to send a verification code to your email on the next step.
             </p>
           </form>
 

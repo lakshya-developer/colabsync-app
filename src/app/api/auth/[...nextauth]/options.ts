@@ -10,8 +10,8 @@ export const authOptions: NextAuthOptions = {
       id: 'credentials',
       name: 'credentials',
       credentials: {
-        email: {label: 'Email', type: 'text'},
-        password: {label: 'Password', type: 'password'}
+        email: { label: 'Email', type: 'text' },
+        password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials: any): Promise<any> {
         await dbConnect()
@@ -20,17 +20,17 @@ export const authOptions: NextAuthOptions = {
             email: credentials.identifier
           })
 
-          if(!user) {
+          if (!user) {
             throw new Error('No user found with that email.')
           }
 
-          if(!user.isVerified) {
+          if (!user.isVerified) {
             throw new Error('Please verify your account before login')
           }
 
           const isPasswordCorrect = await bcrypt.compare(credentials.password, user.passwordHashed)
 
-          if(isPasswordCorrect) {
+          if (isPasswordCorrect) {
             return user
           } else {
             throw new Error('Incorrect Password.')
@@ -42,8 +42,8 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async session({session, token}) {
-      if(token) {
+    async session({ session, token }) {
+      if (token) {
         session.user._id = token._id
         session.user.isVerified = token.isVerified
         session.user.companyId = token.companyId
@@ -53,8 +53,8 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async jwt({token, user}) {
-      if(user) {
+    async jwt({ token, user }) {
+      if (user) {
         token._id = user._id
         token.isVerified = user.isVerified
         token.companyId = user.companyId

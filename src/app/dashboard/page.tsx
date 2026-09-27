@@ -124,10 +124,10 @@ function AdminView({
   const itemBg = isDark ? 'border-zinc-800 bg-zinc-950/60' : 'border-zinc-200 bg-white';
 
   const statCards = [
-    { label: 'Total Members',  value: stats?.totalMembers ?? 0,       sub: 'In your company',       accent: 'blue'  as const, icon: Users },
-    { label: 'Active Tasks',   value: stats?.activeTasks ?? 0,        sub: 'Not yet completed',     accent: 'green' as const, icon: CheckSquare },
-    { label: 'Teams',          value: stats?.teamsCount ?? 0,         sub: 'Active departments',    accent: 'blue'  as const, icon: Briefcase },
-    { label: 'Online Now',     value: stats?.onlineMembersCount ?? 0, sub: 'Currently active',      accent: 'green' as const, icon: Wifi },
+    { label: 'Total Members', value: stats?.totalMembers ?? 0, sub: 'In your company', accent: 'blue' as const, icon: Users },
+    { label: 'Active Tasks', value: stats?.activeTasks ?? 0, sub: 'Not yet completed', accent: 'green' as const, icon: CheckSquare },
+    { label: 'Teams', value: stats?.teamsCount ?? 0, sub: 'Active departments', accent: 'blue' as const, icon: Briefcase },
+    { label: 'Online Now', value: stats?.onlineMembersCount ?? 0, sub: 'Currently active', accent: 'green' as const, icon: Wifi },
   ];
 
   return (
@@ -186,7 +186,7 @@ function AdminView({
         </SectionCard>
 
         {/* Activity feed */}
-        <SectionCard title="Recent Activity" isDark={isDark}>
+        <SectionCard title="Recent Activity" className="cursor-pointer" onClick={() => router.push('/dashboard/tasks')} isDark={isDark}>
           {isLoading ? (
             <div className="space-y-3">
               {Array(5).fill(0).map((_, i) => (
@@ -203,9 +203,9 @@ function AdminView({
           ) : activity.length === 0 ? (
             <p className={`text-sm ${muted}`}>No recent activity yet.</p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-3 overflow-y-auto h-64">
               {activity.map((a, i) => (
-                <li key={a._id} className={`flex gap-3 rounded-xl border p-3 ${itemBg}`}>
+                <li key={a._id} className={`flex gap-3 rounded-xl border p-3 mr-5 ${itemBg}`}>
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${i % 2 === 0 ? 'bg-brand-blue' : 'bg-brand-green'}`} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{a.action}</p>
@@ -239,10 +239,10 @@ function ManagerView({
   const team = teams[0] ?? null;
 
   const statCards = [
-    { label: 'Team Size',           value: stats?.teamSize ?? 0,                sub: 'Active members',    accent: 'blue'  as const, icon: Users },
-    { label: 'Tasks Assigned',      value: stats?.tasksAssigned ?? 0,           sub: 'This sprint',       accent: 'green' as const, icon: CheckSquare },
-    { label: 'Completed This Week', value: stats?.tasksCompletedThisWeek ?? 0,  sub: 'Great progress',    accent: 'blue'  as const, icon: TrendingUp },
-    { label: 'Overdue',             value: stats?.overdueCount ?? 0,            sub: 'Needs attention',   accent: 'green' as const, icon: AlertCircle },
+    { label: 'Team Size', value: stats?.teamSize ?? 0, sub: 'Active members', accent: 'blue' as const, icon: Users },
+    { label: 'Tasks Assigned', value: stats?.tasksAssigned ?? 0, sub: 'This sprint', accent: 'green' as const, icon: CheckSquare },
+    { label: 'Completed This Week', value: stats?.tasksCompletedThisWeek ?? 0, sub: 'Great progress', accent: 'blue' as const, icon: TrendingUp },
+    { label: 'Overdue', value: stats?.overdueCount ?? 0, sub: 'Needs attention', accent: 'green' as const, icon: AlertCircle },
   ];
 
   return (
@@ -318,9 +318,8 @@ function ManagerView({
                       {m.name.charAt(0)}
                     </div>
                     <span
-                      className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 ${
-                        isDark ? 'border-zinc-950' : 'border-white'
-                      } ${m.isOnline ? 'bg-brand-green' : 'bg-zinc-400'}`}
+                      className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 ${isDark ? 'border-zinc-950' : 'border-white'
+                        } ${m.isOnline ? 'bg-brand-green' : 'bg-zinc-400'}`}
                     />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -355,10 +354,10 @@ function EmployeeView({
   const itemBg = isDark ? 'border-zinc-800 bg-zinc-950/60' : 'border-zinc-200 bg-white';
 
   const statCards = [
-    { label: 'Due Today',      value: stats?.dueToday ?? 0,          sub: 'Action needed',   accent: 'blue'  as const, icon: Clock },
-    { label: 'Overdue',        value: stats?.overdue ?? 0,           sub: 'Past due date',   accent: 'green' as const, icon: AlertCircle },
-    { label: 'Completed',      value: stats?.completedThisWeek ?? 0, sub: 'This week',       accent: 'blue'  as const, icon: CheckSquare },
-    { label: 'In Progress',    value: stats?.inProgress ?? 0,        sub: 'Active tasks',    accent: 'green' as const, icon: Activity },
+    { label: 'Due Today', value: stats?.dueToday ?? 0, sub: 'Action needed', accent: 'blue' as const, icon: Clock },
+    { label: 'Overdue', value: stats?.overdue ?? 0, sub: 'Past due date', accent: 'green' as const, icon: AlertCircle },
+    { label: 'Completed', value: stats?.completedThisWeek ?? 0, sub: 'This week', accent: 'blue' as const, icon: CheckSquare },
+    { label: 'In Progress', value: stats?.inProgress ?? 0, sub: 'Active tasks', accent: 'green' as const, icon: Activity },
   ];
 
   const priorityColor: Record<string, string> = {
@@ -373,10 +372,10 @@ function EmployeeView({
   };
 
   const quickActions = [
-    { label: 'New Message',    icon: MessageSquare, href: '/dashboard/messages',      accent: 'blue'  },
-    { label: 'View Schedule',  icon: Calendar,      href: '/dashboard/schedule',      accent: 'green' },
-    { label: 'My Tasks',       icon: Target,        href: '/dashboard/tasks',         accent: 'blue'  },
-    { label: 'Announcements',  icon: Activity,      href: '/dashboard/announcements', accent: 'green' },
+    { label: 'New Message', icon: MessageSquare, href: '/dashboard/messages', accent: 'blue' },
+    { label: 'View Schedule', icon: Calendar, href: '/dashboard/schedule', accent: 'green' },
+    { label: 'My Tasks', icon: Target, href: '/dashboard/tasks', accent: 'blue' },
+    { label: 'Announcements', icon: Activity, href: '/dashboard/announcements', accent: 'green' },
   ];
 
   return (
@@ -443,11 +442,10 @@ function EmployeeView({
                 <li key={t._id}
                   className={`flex items-center gap-3 rounded-xl border p-3 ${itemBg} ${t.status === 'completed' ? 'opacity-50' : ''}`}
                 >
-                  <div className={`h-4 w-4 shrink-0 rounded-full border-2 ${
-                    t.status === 'completed'
-                      ? 'border-brand-green bg-brand-green'
-                      : isDark ? 'border-zinc-700' : 'border-zinc-300'
-                  }`} />
+                  <div className={`h-4 w-4 shrink-0 rounded-full border-2 ${t.status === 'completed'
+                    ? 'border-brand-green bg-brand-green'
+                    : isDark ? 'border-zinc-700' : 'border-zinc-300'
+                    }`} />
                   <span className={`flex-1 text-sm truncate ${t.status === 'completed' ? 'line-through' : ''}`}>
                     {t.title}
                   </span>

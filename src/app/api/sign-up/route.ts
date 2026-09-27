@@ -1,9 +1,6 @@
 import dbConnect from "@/lib/dbConnect";
 import UserModel from "@/models/User";
 import bcrypt from 'bcryptjs'
-
-
-import { sendVerificationEmail } from "@/helper/sendVerificationEmail";
 import generateVerificationCode from "@/lib/generateVerificationCode";
 
 export async function POST(request: Request) {
@@ -52,28 +49,10 @@ export async function POST(request: Request) {
       await newAdmin.save()
     }
 
-    // send Verification Email
-
-    const emailResponse = await sendVerificationEmail(
-      email,
-      name,
-      code
-    )
-
-    if(!emailResponse.success) {
-      return Response.json(
-        {
-          success: false,
-          message: emailResponse.message
-        },
-        {status: 500}
-      )
-    }
-
     return Response.json(
       {
         success: true,
-        message: 'User <Admin> registered successfully'
+        message: 'User registered successfully. Please check your email for the verification code.'
       },
       { status: 201 }
     )

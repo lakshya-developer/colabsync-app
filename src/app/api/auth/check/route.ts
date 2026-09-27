@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       return Response.json(
         {
           success: false,
-          message: "Please verify your email before signing in.",
+          message: "Please verify your email, go to /verify-code page and verify your email.",
           unverified: true,
         },
         { status: 403 }
