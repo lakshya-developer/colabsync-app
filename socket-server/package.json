@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "node --test",
-    "build": "npm run build"
+    "build": "echo \"No build step required\"",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
