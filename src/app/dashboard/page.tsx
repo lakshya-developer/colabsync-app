@@ -186,7 +186,7 @@ function AdminView({
         </SectionCard>
 
         {/* Activity feed */}
-        <SectionCard title="Recent Activity" className="cursor-pointer" onClick={() => router.push('/dashboard/tasks')} isDark={isDark}>
+        <SectionCard title="Recent Activity" isDark={isDark}>
           {isLoading ? (
             <div className="space-y-3">
               {Array(5).fill(0).map((_, i) => (
