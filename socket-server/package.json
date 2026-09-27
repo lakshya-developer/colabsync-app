@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build": "npm run build"
   },
   "keywords": [],
   "author": "",
@@ -19,7 +20,6 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2",
     "nodemon": "^3.1.14",
-    "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io": "^4.8.3"
   }
 }
