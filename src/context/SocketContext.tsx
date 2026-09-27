@@ -46,7 +46,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const socketRef = useRef<Socket | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:5000';
+  const socketUrl = process.env.SOCKET_URL ?? 'http://localhost:5000';
 
   // ── Fetch a fresh socket token ─────────────────────────────────────────────
   const getToken = useCallback(async (): Promise<{ token: string; expiresIn: number } | null> => {
@@ -161,32 +161,4 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
 export function useSocket(): SocketContextValue {
   return useContext(SocketContext);
-}
-
-/**
- * Subscribe to a socket event without managing on/off lifecycle yourself.
- *
- * The latest `handler` is always read from a ref, so:
- *  - No stale closure when handler deps change (e.g. activeRoom)
- *  - The subscription is only torn down when the socket instance itself
- *    changes (token refresh / reconnect), not on every handler update.
- */
-export function useSocketEvent<T = any>(
-  event: string,
-  handler: (payload: T) => void,
-) {
-  const { socket } = useSocket();
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const wrapped = (payload: T) => handlerRef.current(payload);
-    socket.on(event, wrapped);
-
-    return () => {
-      socket.off(event, wrapped);
-    };
-  }, [socket, event]);
 }
