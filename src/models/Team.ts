@@ -1,4 +1,4 @@
-import mongoose, {Schema, Document} from 'mongoose'
+import mongoose, { Schema, Document } from 'mongoose'
 
 export interface Team extends Document {
   name: string,
@@ -12,14 +12,14 @@ export interface Team extends Document {
 }
 
 const TeamSchema: Schema<Team> = new mongoose.Schema({
-  name: {type: String, required: [true, 'Team name is required.']},
-  description: {type: String},
-  companyId: {type: mongoose.Types.ObjectId, required: [true, 'Company Id is required.']},
-  managerId: {type: mongoose.Types.ObjectId, required: false},
-  memberId: [{type: mongoose.Types.ObjectId}],
-  createdBy: {type: mongoose.Types.ObjectId, required: [true, 'Created By is required.']},
-  createdAt: {type: Date, default: Date.now},
-  isDeleted: {type: Boolean, default: false}
+  name: { type: String, required: [true, 'Team name is required.'] },
+  description: { type: String },
+  companyId: { type: mongoose.Types.ObjectId, required: [true, 'Company Id is required.'] },
+  managerId: { type: mongoose.Types.ObjectId, required: false },
+  memberId: [{ type: mongoose.Types.ObjectId }],
+  createdBy: { type: mongoose.Types.ObjectId, required: [true, 'Created By is required.'] },
+  createdAt: { type: Date, default: Date.now },
+  isDeleted: { type: Boolean, default: false }
 })
 
 const TeamModel = (mongoose.models.Team as mongoose.Model<Team>) || mongoose.model<Team>('Team', TeamSchema);

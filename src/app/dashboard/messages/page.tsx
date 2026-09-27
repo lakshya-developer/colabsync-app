@@ -18,7 +18,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
-import { useSocket, useSocketEvent } from '@/context/SocketContext';
+import { useSocket } from '@/context/SocketContext';
 import {
   useEffect,
   useRef,
@@ -133,13 +133,12 @@ function MessageBubble({
 
         {/* Bubble */}
         <div
-          className={`rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
-            isMe
-              ? 'rounded-br-sm text-white'
-              : isDark
+          className={`rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${isMe
+            ? 'rounded-br-sm text-white'
+            : isDark
               ? 'rounded-bl-sm bg-zinc-800 text-zinc-100'
               : 'rounded-bl-sm bg-zinc-100 text-zinc-800'
-          }`}
+            }`}
           style={isMe ? { background: 'linear-gradient(135deg, #2E7DC5, #3B9A5A)' } : undefined}
         >
           {msg.content}
@@ -186,9 +185,8 @@ function ChannelItem({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-medium transition-all ${
-        isActive ? activeBg : hoverBg
-      }`}
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-medium transition-all ${isActive ? activeBg : hoverBg
+        }`}
     >
       <Hash className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-brand-blue' : 'opacity-60'}`} />
       <span className="flex-1 truncate">{room.name}</span>
@@ -228,8 +226,8 @@ function TypingIndicator({ names, isDark }: { names: string[]; isDark: boolean }
   const text = names.length === 1
     ? `${names[0]} is typing…`
     : names.length === 2
-    ? `${names[0]} and ${names[1]} are typing…`
-    : `${names[0]} and ${names.length - 1} others are typing…`;
+      ? `${names[0]} and ${names[1]} are typing…`
+      : `${names[0]} and ${names.length - 1} others are typing…`;
 
   const muted = isDark ? 'text-zinc-500' : 'text-zinc-400';
   return (
@@ -381,46 +379,55 @@ export default function MessagesPage() {
   const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // ── Socket events ─────────────────────────────────────────────────────────
-  //
-  // useSocketEvent reads the latest handler via a ref internally, so:
-  //  • No stale closure on activeRoom — switching rooms never causes a missed-
-  //    message window while the old listener tears down and the new one attaches.
-  //  • No duplicate subscription when the socket instance is replaced on
-  //    token refresh.
+  useEffect(() => {
+    if (!socket) return;
 
-  useSocketEvent<ChatMessage>('message:new', (msg) => {
-    // Normalize both sides to string — msg.roomId comes from Mongoose's
-    // .toObject() which keeps it as a MongoDB ObjectId, not a plain string.
-    if (!activeRoom || String(msg.roomId) !== String(activeRoom._id)) return;
+    const onNewMessage = (msg: ChatMessage) => {
+      if (!activeRoom || msg.roomId !== activeRoom._id) return;
+      setMessages((prev) => {
+        // Deduplicate by _id
+        if (prev.some((m) => m._id === msg._id)) return prev;
+        return [...prev, msg];
+      });
+      // Clear typing for sender
+      const senderId = typeof msg.senderId === 'object' ? msg.senderId._id : msg.senderId;
+      setTypingUsers((prev) => {
+        const next = { ...prev };
+        delete next[senderId];
+        return next;
+      });
+    };
 
-    setMessages((prev) => {
-      if (prev.some((m) => m._id === msg._id)) return prev; // deduplicate
-      return [...prev, msg];
-    });
+    const onTyping = ({ userId, userName, isTyping, roomId }: any) => {
+      if (!activeRoom || roomId !== activeRoom._id || userId === myId) return;
+      if (isTyping) {
+        setTypingUsers((prev) => ({ ...prev, [userId]: userName }));
+        // Auto-clear after 4s
+        if (typingTimers.current[userId]) clearTimeout(typingTimers.current[userId]);
+        typingTimers.current[userId] = setTimeout(() => {
+          setTypingUsers((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+        }, 4000);
+      } else {
+        setTypingUsers((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+      }
+    };
 
-    // Clear typing indicator for the sender
-    const senderId = typeof msg.senderId === 'object'
-      ? (msg.senderId as any)._id
-      : msg.senderId;
-    setTypingUsers((prev) => {
-      const next = { ...prev };
-      delete next[senderId];
-      return next;
-    });
-  });
+    socket.on('message:new', onNewMessage);
+    socket.on('message:typing', onTyping);
 
-  useSocketEvent('message:typing', ({ userId, userName, isTyping, roomId }: any) => {
-    if (!activeRoom || String(roomId) !== String(activeRoom._id) || userId === myId) return;
-    if (isTyping) {
-      setTypingUsers((prev) => ({ ...prev, [userId]: userName }));
-      if (typingTimers.current[userId]) clearTimeout(typingTimers.current[userId]);
-      typingTimers.current[userId] = setTimeout(() => {
-        setTypingUsers((prev) => { const next = { ...prev }; delete next[userId]; return next; });
-      }, 4000);
-    } else {
-      setTypingUsers((prev) => { const next = { ...prev }; delete next[userId]; return next; });
-    }
-  });
+    return () => {
+      socket.off('message:new', onNewMessage);
+      socket.off('message:typing', onTyping);
+    };
+  }, [socket, activeRoom, myId]);
 
   // Re-join room when socket reconnects
   useEffect(() => {
@@ -732,9 +739,8 @@ export default function MessagesPage() {
                   <button
                     onClick={loadMore}
                     disabled={msgLoading}
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                      isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600'
-                    }`}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600'
+                      }`}
                   >
                     {msgLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ChevronDown className="h-3 w-3" />}
                     Load earlier messages
@@ -824,11 +830,10 @@ export default function MessagesPage() {
                   id="chat-send-button"
                   onClick={sendMessage}
                   disabled={!draft.trim() || sending}
-                  className={`mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition ${
-                    draft.trim()
-                      ? 'bg-brand-blue text-white hover:bg-brand-blue-dark'
-                      : `${isDark ? 'bg-zinc-700' : 'bg-zinc-200'} ${muted} cursor-not-allowed`
-                  }`}
+                  className={`mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition ${draft.trim()
+                    ? 'bg-brand-blue text-white hover:bg-brand-blue-dark'
+                    : `${isDark ? 'bg-zinc-700' : 'bg-zinc-200'} ${muted} cursor-not-allowed`
+                    }`}
                 >
                   {sending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
